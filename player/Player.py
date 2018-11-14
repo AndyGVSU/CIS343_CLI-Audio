@@ -9,6 +9,7 @@ class Player:
     def __init__(self):
         self.startSong = "Nothing playing."
         self.currentSong = self.startSong
+        self.stream = None
         self.paused = True
         self.position = 0
 
@@ -33,9 +34,6 @@ class Player:
             else:
                 self.paused = False
                 self.stream.start_stream()
-        else:
-            return
-            #display error
 
     """Plays the song track (given the filename is valid)."""
     def play(self, track):
@@ -44,7 +42,7 @@ class Player:
 
         try:
             self.wf = wave.open(track, 'rb')
-        except wave.Error:
+        except Exception:
             raise CLI_Audio_File_Exception("Error opening wave file.")
 
         # instantiate PyAudio (1)
@@ -60,13 +58,13 @@ class Player:
         # start the self.stream (4)
         self.stream.start_stream()
 
-    """Ends the player permanently."""
+    """Ends the player permanently (if a stream exists)."""
     def stop(self):
-        self.stream.stop_stream()
-        self.stream.close()
-        self.wf.close()
-
-        self.p.terminate() 
+        if self.stream != None:
+            self.stream.stop_stream()
+            self.stream.close()
+            self.wf.close()
+            self.p.terminate() 
 
     """Allows the stream to be opened."""
     def callback(self, in_data, frame_count, time_info, status):
