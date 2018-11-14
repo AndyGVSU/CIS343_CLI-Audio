@@ -2,6 +2,7 @@ import curses
 import curses.textpad
 from exceptions.CLI_Audio_Exception import CLI_Audio_Screen_Size_Exception
 from exceptions.CLI_Audio_Exception import CLI_Audio_File_Exception
+from library.Library import Library
 
 import sys
 import os
@@ -9,9 +10,9 @@ import os
 class FrontEnd:
 
     def __init__(self, player):
-        self.libraryMap = {}
-        self.libraryPage = 0
         self.player = player
+        self.pageLength = 12
+        self.library = Library(self.pageLength)
         #self.player.play(sys.argv[1])
         curses.wrapper(self.menu)
        
@@ -59,7 +60,6 @@ class FrontEnd:
 
             elif c == ord('c'):
                 self.changeSong()
-                self.updateSong()
                 #self.stdscr.touchwin()
                 #self.stdscr.refresh()
             elif c == ord('l'):
@@ -67,16 +67,16 @@ class FrontEnd:
                 #self.stdscr.touchwin()
                 #self.stdscr.refresh()
             elif c == ord('['):
-                if self.libraryPage > 0:
-                    self.libraryPage = self.libraryPage - 1
+                if self.library.getPage() > 0:
+                    self.library.addPage(-1)
                     self.refreshLibraryPad()
-                elif not self.getLibraryLoaded():
+                elif self.library.isEmpty():
                     self.drawError("No library loaded!")
             elif c == ord(']'):
-                if self.libraryPage < self.getLibraryPages():
-                    self.libraryPage = self.libraryPage + 1
+                if self.library.getPage() < self.library.getTotalPages():
+                    self.library.addPage(1)
                     self.refreshLibraryPad()
-                elif not self.getLibraryLoaded():
+                elif self.library.isEmpty():
                     self.drawError("No library loaded!")
     
     def updateSong(self):
@@ -85,7 +85,7 @@ class FrontEnd:
         self.stdscr.addstr(16,10, self.player.getCurrentSong())
 
     def changeSong(self):
-        if len(self.libraryMap) == 0:
+        if self.library.isEmpty():
             self.drawError("No library loaded!")
             return
 
@@ -100,6 +100,7 @@ class FrontEnd:
         del changeWindow
         self.stdscr.touchwin()
         self.stdscr.refresh()
+
         if not self.player.getPaused():
             self.player.stop()
 
@@ -109,13 +110,18 @@ class FrontEnd:
             songNumber = int(songNumber.decode(encoding="utf-8"))
         except ValueError:
             self.drawError("Song number invalid!")
-            return;
+            return
         
         try:
-            self.player.play(self.libraryMap[songNumber])
+            self.player.play(self.library.getFile(songNumber))
         except KeyError:
             self.drawError("Song number out of library range!")
-            return;
+            return
+        except CLI_Audio_File_Exception:
+            self.drawError("Song file invalid!")
+            return
+
+        self.updateSong()
 
     def quit(self):
         self.player.stop()
@@ -123,7 +129,6 @@ class FrontEnd:
 
     def changeLibrary(self):
         self.resetError()
-        self.libraryPage = 0
 
         changeWindow = curses.newwin(5, 40, 5, 50)
         changeWindow.border()
@@ -136,46 +141,30 @@ class FrontEnd:
         self.stdscr.touchwin()
         self.stdscr.refresh()
 
-        if not self.player.getPaused():
-            self.player.stop()
-        
-        self.libraryMap = {}
-        songCount = 0
+        #if not self.player.getPaused():
+        #    self.player.pause()
 
         try:
-            with os.scandir(path) as it:
-                for entry in it:
-                    if entry.is_file():
-                        filename = os.fsdecode(entry)
-
-                        if filename.endswith(".wav"):
-                            self.libraryMap[songCount] = filename
-                            songCount = songCount + 1
-        except FileNotFoundError:
+            self.library.loadFiles(path)
+        except CLI_Audio_File_Exception:
             self.drawError("Path does not exist!")
 
         self.refreshLibraryPad()
     
     def refreshLibraryPad(self):
-        self.stdscr.addstr(19,50,"<PAGE " + str(self.libraryPage + 1) + " OF " + str(self.getLibraryPages() + 1) + ">")
+        self.stdscr.addstr(19,50,"<PAGE " + str(self.library.getPage() + 1) + " OF " + str(self.library.getTotalPages() + 1) + ">")
         self.libraryPad.erase()
         self.libraryPad.border()
 
-        if not self.getLibraryLoaded():
+        if self.library.isEmpty():
             self.libraryPad.addstr(1, 1, "No files found!")
         else:
-            for y in range(0,12):
-                key = y + (12 * self.libraryPage)
-                if key < len(self.libraryMap):
-                    self.libraryPad.addstr(1 + y, 1, str(key) + ": " + self.libraryMap[key])
+            for y in range(0,self.pageLength):
+                key = y + (self.pageLength * self.library.getPage())
+                if key < len(self.library):
+                    self.libraryPad.addstr(1 + y, 1, str(key) + ": " + self.library.getFile(key))
 
         self.libraryPad.refresh()
-
-    def getLibraryLoaded(self):
-        return len(self.libraryMap) > 0
-
-    def getLibraryPages(self):
-        return int(len(self.libraryMap) / 12)
 
     def drawError(self, message):
         self.stdscr.addstr(3,5,"                                 ")
