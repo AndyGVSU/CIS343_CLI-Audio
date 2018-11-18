@@ -7,17 +7,32 @@ from library.Library import Library
 import sys
 import os
 
+"""
+This is the GUI of the application - here, the client can play audio and
+use the provided functionality, which is done through curses.
+"""
 class FrontEnd:
-
+    """
+    Constructor of the class. Takes in self and the player.
+    """
     def __init__(self, player):
+        """Player to communicate with from this class"""
         self.player = player
+        """Page length for the library to display per page."""
         self.pageLength = 12
+        """Library to pull songs from."""
         self.library = Library(self.pageLength)
+        """Wrapper for the curses menu."""
         curses.wrapper(self.menu)
-       
+     
+    """
+    Initializes the menu for the GUI. Additionally, provides functionality
+    for the commands that the user can apply.
+    """
     def menu(self, args):
         self.stdscr = curses.initscr()
         
+        """Max window size. If screen is less than this, then CLI_Audio_Screen_Size_Exception is thrown."""
         screenSize = self.stdscr.getmaxyx()
         minY = 20
         minX = 102
@@ -30,6 +45,7 @@ class FrontEnd:
                 message = message + "\nScreen size of " + str(screenSize[1]) + " isn't wide enough; must be at least " + str(minX)
             raise CLI_Audio_Screen_Size_Exception(message)
   
+        """Initialize the curses window"""
         self.stdscr.border()
         self.stdscr.addstr(0,0, "cli-audio",curses.A_REVERSE)
         self.stdscr.addstr(5,10, "c - Change Current Song")
@@ -48,8 +64,10 @@ class FrontEnd:
 
         wait = 0
         while True:
+            #Wait for user input.
             c = self.stdscr.getch()
-
+            
+            #escape = quit
             if c == 27:
                 self.quit()
             elif c == ord('p'):
@@ -57,16 +75,23 @@ class FrontEnd:
                 if self.player.getCurrentSong() == self.player.getStartSong():
                     self.drawError("No song selected!")
 
+            #change song
             elif c == ord('c'):
                 self.changeSong()
+
+            #change library
             elif c == ord('l'):
                 self.changeLibrary()
+
+            #go back one page in library
             elif c == ord('['):
                 if self.library.getPage() > 0:
                     self.library.addPage(-1)
                     self.refreshLibraryPad()
                 elif self.library.isEmpty():
                     self.drawError("No library loaded!")
+
+            #go forward a page in the library
             elif c == ord(']'):
                 if self.library.getPage() < self.library.getTotalPages():
                     self.library.addPage(1)
@@ -74,11 +99,18 @@ class FrontEnd:
                 elif self.library.isEmpty():
                     self.drawError("No library loaded!")
     
+    """
+    Update song function. Called when new song is loaded in. Displays song information.
+    """
     def updateSong(self):
         self.stdscr.addstr(16,10, "                                        ")
         self.stdscr.addstr(15,10, "Now playing: ")
         self.stdscr.addstr(16,10, self.player.getCurrentSong())
 
+    """
+    Changes the current song playing. Creates a window where the user
+    can select a song from the loaded library.
+    """
     def changeSong(self):
         if self.library.isEmpty():
             self.drawError("No library loaded!")
@@ -100,13 +132,15 @@ class FrontEnd:
             self.player.stop()
 
         self.refreshLibraryPad()
-
+        
+        #Attempt to change the song with the given song number.
         try:
             songNumber = int(songNumber.decode(encoding="utf-8"))
         except ValueError:
             self.drawError("Song number invalid!")
             return
         
+        #Send the update to the player.
         try:
             self.player.play(self.library.getFile(songNumber))
         except KeyError:
@@ -118,10 +152,16 @@ class FrontEnd:
 
         self.updateSong()
 
+    """
+    Quits the player. Sends the quit command to the player as well.
+    """
     def quit(self):
         self.player.stop()
         exit()
 
+    """
+    Changes the library. Opens a window for the user to input a directory path.
+    """
     def changeLibrary(self):
         self.resetError()
 
@@ -143,6 +183,10 @@ class FrontEnd:
 
         self.refreshLibraryPad()
     
+    """
+    Changes the page of the library. Used for both [ and ] input. Gets
+    the next <pagelength> number of songs to display.
+    """
     def refreshLibraryPad(self):
         self.stdscr.addstr(19,50,"<PAGE " + str(self.library.getPage() + 1) + " OF " + str(self.library.getTotalPages() + 1) + ">")
         self.libraryPad.erase()
@@ -161,9 +205,15 @@ class FrontEnd:
 
         self.libraryPad.refresh()
 
+    """
+    Displays an error message in the curses window.
+    """
     def drawError(self, message):
         self.stdscr.addstr(3,5,"                                 ")
         self.stdscr.addstr(3,5,message)
     
+    """
+    Resets the error window.
+    """
     def resetError(self):
         self.stdscr.addstr(3,5,"                                 ")
