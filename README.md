@@ -16,3 +16,4 @@ Via the pyaudio website.
 
 ## Authors
 Andy Hudson, Tyler Bruder, Matt Kennedy, Noah Verdeyen
+Interpreted using Python 3.6 on Windows 10
