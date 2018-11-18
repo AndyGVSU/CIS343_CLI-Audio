@@ -13,15 +13,14 @@ class FrontEnd:
         self.player = player
         self.pageLength = 12
         self.library = Library(self.pageLength)
-        #self.player.play(sys.argv[1])
         curses.wrapper(self.menu)
        
     def menu(self, args):
         self.stdscr = curses.initscr()
         
         screenSize = self.stdscr.getmaxyx()
-        minY = 15
-        minX = 90
+        minY = 20
+        minX = 102
         
         message = ""
         if (screenSize[0] < minY or screenSize[1] < minX):
@@ -60,12 +59,8 @@ class FrontEnd:
 
             elif c == ord('c'):
                 self.changeSong()
-                #self.stdscr.touchwin()
-                #self.stdscr.refresh()
             elif c == ord('l'):
                 self.changeLibrary()
-                #self.stdscr.touchwin()
-                #self.stdscr.refresh()
             elif c == ord('['):
                 if self.library.getPage() > 0:
                     self.library.addPage(-1)
@@ -141,9 +136,6 @@ class FrontEnd:
         self.stdscr.touchwin()
         self.stdscr.refresh()
 
-        #if not self.player.getPaused():
-        #    self.player.pause()
-
         try:
             self.library.loadFiles(path)
         except CLI_Audio_File_Exception:
@@ -162,7 +154,10 @@ class FrontEnd:
             for y in range(0,self.pageLength):
                 key = y + (self.pageLength * self.library.getPage())
                 if key < len(self.library):
-                    self.libraryPad.addstr(1 + y, 1, str(key) + ": " + self.library.getFile(key))
+                    media = self.library.getFile(key)
+                    if len(media) >= 45:
+                        media = media[0:45]
+                    self.libraryPad.addstr(1 + y, 1, str(key) + ": " + media)
 
         self.libraryPad.refresh()
 
