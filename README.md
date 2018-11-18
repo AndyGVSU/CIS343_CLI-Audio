@@ -13,3 +13,6 @@ python -m pip install windows-curses
 ```
 
 Via the pyaudio website.
+
+## Authors
+Andy Hudson, Tyler Bruder, Matt Kennedy, Noah Verdeyen
